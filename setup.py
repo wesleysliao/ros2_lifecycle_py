@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+          'demo_talker = ros2_lifecycle_py.lifecycle_talker:main', 
         ],
     },
 )

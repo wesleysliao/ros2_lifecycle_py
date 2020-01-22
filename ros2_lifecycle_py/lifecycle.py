@@ -2,15 +2,13 @@ import rclpy
 
 from rclpy.node import Node
 
-
-from lifecycle_mgs.msg import State
+from lifecycle_msgs.msg import State
 from lifecycle_msgs.msg import Transition
-from lifecycle_msgs.msg import TransistionDescription
 from lifecycle_msgs.msg import TransitionEvent
 
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetAvailableStates
-from lifecycle_msgs.srv import GetAvailibleTransitions
+from lifecycle_msgs.srv import GetAvailableTransitions
 from lifecycle_msgs.srv import GetState
 
 
@@ -19,113 +17,119 @@ class LifecycleNode(Node):
     
     def __init__(self, node_name:str):
         super().__init__(node_name)
-        self.state = State.PRIMARY_STATE_UNKNOWN
+        self.state = State.PRIMARY_STATE_UNCONFIGURED
 
-        self.srv_get_state = 
-            self.create_service(
+        self.srv_get_state = self.create_service(
                 GetState, 
-                node_name + '__get_state',
+                node_name + '/get_state',
                 self.get_state
             )
 
-        self.srv_change_state = 
-            self.create_service(
+        self.srv_change_state = self.create_service(
                 ChangeState,
-                node_name + '__change_state',
+                node_name + '/change_state',
                 self.change_state
             )
 
-        self.srv_get_available_states = 
-            self.create_service(
-                , 
-                node_name + '__get_available_states',
-                self.get_available_states
-            )
+        # self.srv_get_available_states = self.create_service(
+        #         , 
+        #         node_name + '__get_available_states',
+        #         self.get_available_states
+        #     )
 
-        self.srv_get_available_transitions = 
-            self.create_service(
-                ,
-                node_name + '__get_available_transitions',
-                self.get_available_transitions
-            )
+        # self.srv_get_available_transitions = self.create_service(
+        #         ,
+        #         node_name + '__get_available_transitions',
+        #         self.get_available_transitions
+        #     )
 
 
-        self.pub_transition_event = 
-            self.create_publisher(
+        self.pub_transition_event = self.create_publisher(
                 TransitionEvent, 
-                node_name + '__transition_event',
+                node_name + '/transition_event',
                 1
             )
 
+
     
     def change_state(self, request, response):
-        print(request.transition)
-
-        response.success = False
         
-        if(request.transition==Transition.TRANSITION_CREATE):
-            response.success = (self.create() == TRANSITION_CALLBACK_SUCCESS)
+        if(request.transition.id == Transition.TRANSITION_CREATE):
+            response.success = (self.create() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
-        elif(request.transition==Transition.TRANSITION_CONFIGURE):
-            response.success = (self.configure() == TRANSITION_CALLBACK_SUCCESS)
+        elif(request.transition.id == Transition.TRANSITION_CONFIGURE):
+            response.success = (self.configure() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
-        elif(request.transition==Transition.TRANSITION_CLEANUP):
-            response.success = (self.cleanup() == TRANSITION_CALLBACK_SUCCESS)
+        elif(request.transition.id == Transition.TRANSITION_CLEANUP):
+            response.success = (self.cleanup() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
-        elif(request.transition==Transition.TRANSITION_ACTIVATE):
-            response.success = (self.activate() == TRANSITION_CALLBACK_SUCCESS)
+        elif(request.transition.id == Transition.TRANSITION_ACTIVATE):
+            response.success = (self.activate() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
-        elif(request.transition==Transition.TRANSITION_DEACTIVATE):
-            response.success = (self.deactivate() == TRANSITION_CALLBACK_SUCCESS)
+        elif(request.transition.id == Transition.TRANSITION_DEACTIVATE):
+            response.success = (self.deactivate() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
-        elif(request.transition==Transition.TRANSITION_UNCONFIGURED_SHUTDOWN
-              or request.transition==Transition.TRANSITION_INACTIVE_SHUTDOWN
-              or request.transition==Transition.TRANSITION_ACTIVE_SHUTDOWN):
-            response.success = (self.shutdown() == TRANSITION_CALLBACK_SUCCESS)
+        elif(request.transition.id == Transition.TRANSITION_UNCONFIGURED_SHUTDOWN
+              or request.transition.id == Transition.TRANSITION_INACTIVE_SHUTDOWN
+              or request.transition.id == Transition.TRANSITION_ACTIVE_SHUTDOWN):
+            response.success = (self.shutdown() == Transition.TRANSITION_CALLBACK_SUCCESS)
 
         elif(request.transition==Transition.TRANSITION_DESTROY):
             response.success = self.destroy()
 
+        else:
+            response.success = False
+
         return response
+    
+    def get_label(self, msg_type, id):
+        for key, value in vars(msg_type).items():
+            if(value == id):
+                return key
+        return None
 
 
-    def get_state(self):
-        return State(id=self.state)
+    def get_state(self, request, response):
+        response.current_state = State(id=self.state, label=self.get_label(State, self.state))
+
+        return response 
 
 
     def create(self):
+        print("create")
         if(self.state == State.PRIMARY_STATE_UNKNOWN):
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp=self.get_clock().now(),
+                    timestamp=self.get_clock().now().nanoseconds,
                     transition=Transition.TRANSITION_CREATE,
                     start_state=State.PRIMARY_STATE_UNKNOWN,
                     goal_state=State.PRIMARY_STATE_UNCONFIGURED
                 )
             )
             self.state = State.PRIMARY_STATE_UNCONFIGURED
-            return True
+            return Transition.TRANSITION_CALLBACK_SUCCESS 
         else:
-            return False
+            return Transition.TRANSITION_CALLBACK_FAILURE
 
 
     def configure(self):
+        print("configure")
         if(self.state == State.PRIMARY_STATE_UNCONFIGURED):
 
             self.state = State.TRANSITION_STATE_CONFIGURING
 
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = Transition.TRANSITION_CONFIGURE,
-                    start_state = State.PRIMARY_STATE_UNCONFIGURED,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=Transition.TRANSITION_CONFIGURE),
+                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
+                    goal_state = State(id=self.state)
                 )
             )
 
-            task_config = self.executor().create_task(self.on_configure)
+            task_config = self.executor.create_task(self.on_configure)
 
-            self.executor().spin_until_future_complete(task_config)
+            self.executor.spin_until_future_complete(task_config)
 
             result_transition = None
             if(task_config.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
@@ -139,15 +143,15 @@ class LifecycleNode(Node):
             else:
                 self.state = State.TRANSITION_STATE_ERRORPROCESSING
                 result_transition = Transition.TRANSITION_ON_CONFIGURE_ERROR
-            
+
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = result_transition,
-                    start_state = State.PRIMARY_STATE_UNCONFIGURED,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=result_transition),
+                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
             return task_config.result()
 
@@ -159,16 +163,16 @@ class LifecycleNode(Node):
 
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = Transition.TRANSITION_CLEANUP,
-                    start_state = State.PRIMARY_STATE_INACTIVE,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=Transition.TRANSITION_CLEANUP),
+                    start_state = State(id=State.PRIMARY_STATE_INACTIVE),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
-            task_cleanup = self.executor().create_task(self.on_cleanup)
+            task_cleanup = self.executor.create_task(self.on_cleanup)
 
-            self.executor().spin_until_future_complete(task_cleanup)
+            self.executor.spin_until_future_complete(task_cleanup)
 
             result_transition = None
             if(task_cleanup.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
@@ -181,12 +185,12 @@ class LifecycleNode(Node):
             
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = result_transition,
-                    start_state = State.PRIMARY_STATE_UNCONFIGURED,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=result_transition),
+                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
             return task_cleanup.result()
 
@@ -198,16 +202,16 @@ class LifecycleNode(Node):
 
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = Transition.TRANSITION_ACTIVATE,
-                    start_state = State.PRIMARY_STATE_INACTIVE,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=Transition.TRANSITION_ACTIVATE),
+                    start_state = State(id=State.PRIMARY_STATE_INACTIVE),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
-            task_activate = self.executor().create_task(self.on_activate)
+            task_activate = self.executor.create_task(self.on_activate)
 
-            self.executor().spin_until_future_complete(task_activate)
+            self.executor.spin_until_future_complete(task_activate)
 
             result_transition = None
             if(task_activate.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
@@ -224,12 +228,12 @@ class LifecycleNode(Node):
             
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = result_transition,
-                    start_state = State.TRANSITION_STATE_ACTIVATING,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=result_transition),
+                    start_state = State(id=State.TRANSITION_STATE_ACTIVATING),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
             return task_activate.result()
 
@@ -241,16 +245,16 @@ class LifecycleNode(Node):
 
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = Transition.TRANSITION_DEACTIVATE,
-                    start_state = State.PRIMARY_STATE_ACTIVE,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=Transition.TRANSITION_DEACTIVATE),
+                    start_state = State(id=State.PRIMARY_STATE_ACTIVE),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
-            task_deactivate = self.executor().create_task(self.on_deactivate)
+            task_deactivate = self.executor.create_task(self.on_deactivate)
 
-            self.executor().spin_until_future_complete(task_deactivate)
+            self.executor.spin_until_future_complete(task_deactivate)
 
             result_transition = None
             if(task_deactivate.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
@@ -263,12 +267,12 @@ class LifecycleNode(Node):
             
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = result_transition,
-                    start_state = State.TRANSITION_STATE_DEACTIVATING,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=result_transition),
+                    start_state = State(id=State.TRANSITION_STATE_DEACTIVATING),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
             return task_deactivate.result()
 
@@ -281,37 +285,38 @@ class LifecycleNode(Node):
             if (self.state == State.PRIMARY_STATE_UNCONFIGURED):
                 self.pub_transition_event.publish(
                     TransitionEvent(
-                        timestamp = self.get_clock().now(),
-                        transition = Transition.TRANSITION_UNCONFIGURED_SHUTDOWN,
-                        start_state = State.PRIMARY_STATE_UNCONFIGURED,
-                        goal_state = self.state
+                        timestamp = self.get_clock().now().nanoseconds,
+                        transition = Transition(id=Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),
+                        start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
+                        goal_state = State(id=self.state)
                     )
-                )
+                )       
 
             elif (self.state == State.PRIMARY_STATE_INACTIVE):
                 self.pub_transition_event.publish(
                     TransitionEvent(
-                        timestamp = self.get_clock().now(),
-                        transition = Transition.TRANSITION_INACTIVE_SHUTDOWN,
-                        start_state = State.PRIMARY_STATE_INACTIVE,
-                        goal_state = self.state
+                        timestamp = self.get_clock().now().nanoseconds,
+                        transition = Transition(id=Transition.TRANSITION_INACTIVE_SHUTDOWN),
+                        start_state = State(id=State.PRIMARY_STATE_INACTIVE),
+                        goal_state = State(id=self.state)
                     )
-                )
+                )       
 
             elif (self.state == State.PRIMARY_STATE_ACTIVE):
                 self.pub_transition_event.publish(
                     TransitionEvent(
-                        timestamp = self.get_clock().now(),
-                        transition = Transition.TRANSITION_ACTIVE_SHUTDOWN,
-                        start_state = State.PRIMARY_STATE_ACTIVE,
-                        goal_state = self.state
+                        timestamp = self.get_clock().now().nanoseconds,
+                        transition = Transition(id=Transition.TRANSITION_ACTIVE_SHUTDOWN),
+                        start_state = State(id=State.PRIMARY_STATE_ACTIVE),
+                        goal_state = State(id=self.state)
                     )
+                )       
         
-            self.state = State.TRANSITION_STATE_SHUTTING_DOWN
+            self.state = State.TRANSITION_STATE_SHUTTINGDOWN
 
-            task_shutdown = self.executor().create_task(self.on_shutdown)
+            task_shutdown = self.executor.create_task(self.on_shutdown)
 
-            self.executor().spin_until_future_complete(task_shutdown)
+            self.executor.spin_until_future_complete(task_shutdown)
 
             result_transition = None
             if(task_shutdown.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
@@ -324,12 +329,12 @@ class LifecycleNode(Node):
             
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp = self.get_clock().now(),
-                    transition = result_transition,
-                    start_state = State.TRANSITION_STATE_SHUTTING_DOWN,
-                    goal_state = self.state
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(id=result_transition),
+                    start_state = State(id=State.TRANSITION_STATE_SHUTTINGDOWN),
+                    goal_state = State(id=self.state)
                 )
-            )
+            )       
 
             return task_shutdown.result()
 
