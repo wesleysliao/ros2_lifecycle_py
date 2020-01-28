@@ -18,7 +18,7 @@ class LifecycleNode(Node):
     
     def __init__(self, node_name:str):
         super().__init__(node_name)
-        self.state = State.PRIMARY_STATE_UNCONFIGURED
+        self.state = State.PRIMARY_STATE_UNKNOWN
 
         self.available_transitions = None
         self.available_states = [
@@ -97,6 +97,8 @@ class LifecycleNode(Node):
                 node_name + '/transition_event',
                 1
             )
+        
+        self.create()
 
 
     def get_label(self, msg_type, id):
@@ -229,6 +231,9 @@ class LifecycleNode(Node):
 
             return task_config.result()
 
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
+
 
     def cleanup(self):
         if(self.state == State.PRIMARY_STATE_INACTIVE):
@@ -270,8 +275,8 @@ class LifecycleNode(Node):
                         id = result_transition,
                         label = self.get_label(Transition, result_transition)),
                     start_state = State(
-                        id = State.PRIMARY_STATE_UNCONFIGURED,
-                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
+                        id = State.TRANSITION_STATE_CLEANINGUP,
+                        label = self.get_label(State, State.TRANSITION_STATE_CLEANINGUP)),
                     goal_state = State(
                         id = self.state,
                         label = self.get_label(State, self.state))
@@ -279,6 +284,9 @@ class LifecycleNode(Node):
             )       
 
             return task_cleanup.result()
+
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
 
 
     def activate(self):
@@ -335,6 +343,9 @@ class LifecycleNode(Node):
 
             return task_activate.result()
 
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
+
 
     def deactivate(self):
         if(self.state == State.PRIMARY_STATE_ACTIVE):
@@ -386,98 +397,101 @@ class LifecycleNode(Node):
 
             return task_deactivate.result()
 
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
+
 
     def shutdown(self):
-
-        if (self.state == State.PRIMARY_STATE_UNCONFIGURED
-            or self.state == State.PRIMARY_STATE_INACTIVE
-            or self.state == State.PRIMARY_STATE_ACTIVE):
-
-            if (self.state == State.PRIMARY_STATE_UNCONFIGURED):
-                self.pub_transition_event.publish(
-                    TransitionEvent(
-                        timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(
-                            id = Transition.TRANSITION_UNCONFIGURED_SHUTDOWN,
-                            label = self.get_label(Transition, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN)),
-                        start_state = State(
-                            id = State.PRIMARY_STATE_UNCONFIGURED,
-                            label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
-                        goal_state = State(
-                            id = self.state,
-                            label = self.get_label(State, self.state))
-                    )
-                )       
-
-            elif (self.state == State.PRIMARY_STATE_INACTIVE):
-                self.pub_transition_event.publish(
-                    TransitionEvent(
-                        timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(
-                            id = Transition.TRANSITION_INACTIVE_SHUTDOWN,
-                            label = self.get_label(Transition, Transition.TRANSITION_INACTIVE_SHUTDOWN)),
-                        start_state = State(
-                            id = State.PRIMARY_STATE_INACTIVE,
-                            label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)),
-                        goal_state = State(
-                            id = self.state,
-                            label = self.get_label(State, self.state))
-                    )
-                )       
-
-            elif (self.state == State.PRIMARY_STATE_ACTIVE):
-                self.pub_transition_event.publish(
-                    TransitionEvent(
-                        timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(
-                            id = Transition.TRANSITION_ACTIVE_SHUTDOWN,
-                            label = self.get_label(Transition, Transition.TRANSITION_ACTIVE_SHUTDOWN)),
-                        start_state = State(
-                            id = State.PRIMARY_STATE_ACTIVE,
-                            label = self.get_label(State, State.PRIMARY_STATE_ACTIVE)),
-                        goal_state = State(
-                            id = self.state,
-                            label = self.get_label(State, self.state))
-                    )
-                )       
-        
-            self.state = State.TRANSITION_STATE_SHUTTINGDOWN
-
-            task_shutdown = self.executor.create_task(self.on_shutdown)
-
-            self.executor.spin_until_future_complete(task_shutdown)
-
-            result_transition = None
-            if(task_shutdown.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
-                self.state = State.PRIMARY_STATE_FINALIZED
-                result_transition = Transition.TRANSITION_ON_SHUTDOWN_SUCCESS
-
-            else:
-                self.state = State.TRANSITION_STATE_ERRORPROCESSING
-                result_transition = Transition.TRANSITION_ON_SHUTDOWN_ERROR
-            
+        if (self.state == State.PRIMARY_STATE_UNCONFIGURED):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
                     transition = Transition(
-                        id = result_transition,
-                        label = self.get_label(Transition, result_transition)),
+                        id = Transition.TRANSITION_UNCONFIGURED_SHUTDOWN,
+                        label = self.get_label(Transition, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN)),
                     start_state = State(
-                        id = State.TRANSITION_STATE_SHUTTINGDOWN,
-                        label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN)),
+                        id = State.PRIMARY_STATE_UNCONFIGURED,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
                     goal_state = State(
-                        id = self.state,
-                        label = self.get_label(State, self.state))
+                        id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                        label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN))
                 )
             )       
 
-            return task_shutdown.result()
+        elif (self.state == State.PRIMARY_STATE_INACTIVE):
+            self.pub_transition_event.publish(
+                TransitionEvent(
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(
+                        id = Transition.TRANSITION_INACTIVE_SHUTDOWN,
+                        label = self.get_label(Transition, Transition.TRANSITION_INACTIVE_SHUTDOWN)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_INACTIVE,
+                        label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)),
+                    goal_state = State(
+                        id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                        label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN))
+                )
+            )       
+
+        elif (self.state == State.PRIMARY_STATE_ACTIVE):
+            self.pub_transition_event.publish(
+                TransitionEvent(
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(
+                        id = Transition.TRANSITION_ACTIVE_SHUTDOWN,
+                        label = self.get_label(Transition, Transition.TRANSITION_ACTIVE_SHUTDOWN)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_ACTIVE,
+                        label = self.get_label(State, State.PRIMARY_STATE_ACTIVE)),
+                    goal_state = State(
+                        id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                        label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN))
+                )
+            )       
+
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
+
+        self.state = State.TRANSITION_STATE_SHUTTINGDOWN
+
+        task_shutdown = self.executor.create_task(self.on_shutdown)
+
+        self.executor.spin_until_future_complete(task_shutdown)
+
+        result_transition = None
+        if(task_shutdown.result() == Transition.TRANSITION_CALLBACK_SUCCESS):
+            self.state = State.PRIMARY_STATE_FINALIZED
+            result_transition = Transition.TRANSITION_ON_SHUTDOWN_SUCCESS
+
+        else:
+            self.state = State.TRANSITION_STATE_ERRORPROCESSING
+            result_transition = Transition.TRANSITION_ON_SHUTDOWN_ERROR
+        
+        self.pub_transition_event.publish(
+            TransitionEvent(
+                timestamp = self.get_clock().now().nanoseconds,
+                transition = Transition(
+                    id = result_transition,
+                    label = self.get_label(Transition, result_transition)),
+                start_state = State(
+                    id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                    label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN)),
+                goal_state = State(
+                    id = self.state,
+                    label = self.get_label(State, self.state))
+            )
+        )       
+
+        return task_shutdown.result()
 
 
     def destroy(self):
         if(self.state == State.PRIMARY_STATE_FINALIZED):
             self.destroy_node()
 
+        else:
+            return Transition.TRANSITION_CALLBACK_FAILURE
 
 
     def on_configure(self):
