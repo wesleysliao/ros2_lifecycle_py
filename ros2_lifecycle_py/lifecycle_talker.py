@@ -12,10 +12,13 @@ from ros2_lifecycle_py.lifecycle import LifecycleNode
 class LifecycleTalker (LifecycleNode):
     def __init__(self):
         super().__init__("lc_talker")
+        self.pubcount = 0
     
     def on_configure(self):
         self.pub = self.create_publisher(String, "lifecycle_chatter", 10)
         self.get_logger().info("on_configure() is called")
+
+        self.create_timer(1.0, self.publish_callback)
 
         return Transition.TRANSITION_CALLBACK_SUCCESS
     
@@ -29,6 +32,11 @@ class LifecycleTalker (LifecycleNode):
         self.get_logger().info("on_deactivate() is called")
 
         return Transition.TRANSITION_CALLBACK_SUCCESS
+
+    def publish_callback(self):
+        if(self.state == State.PRIMARY_STATE_ACTIVE):
+            self.pubcount += 1
+            self.pub.publish(String(data = "Lifecycle (Python) Hello World #" + str(self.pubcount)))
 
 
 def main(args=None):

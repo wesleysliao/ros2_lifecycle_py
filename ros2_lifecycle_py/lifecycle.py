@@ -5,6 +5,7 @@ from rclpy.node import Node
 from lifecycle_msgs.msg import State
 from lifecycle_msgs.msg import Transition
 from lifecycle_msgs.msg import TransitionEvent
+from lifecycle_msgs.msg import TransitionDescription
 
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.srv import GetAvailableStates
@@ -19,6 +20,54 @@ class LifecycleNode(Node):
         super().__init__(node_name)
         self.state = State.PRIMARY_STATE_UNCONFIGURED
 
+        self.available_transitions = None
+        self.available_states = [
+            State(
+                id = State.PRIMARY_STATE_UNKNOWN,
+                label = self.get_label(State, State.PRIMARY_STATE_UNKNOWN)
+            ) ,
+            State(
+                id = State.PRIMARY_STATE_UNCONFIGURED,
+                label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)
+            ) ,
+            State(
+                id = State.PRIMARY_STATE_INACTIVE,
+                label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)
+            ) ,
+            State(
+                id = State.PRIMARY_STATE_ACTIVE,
+                label = self.get_label(State, State.PRIMARY_STATE_ACTIVE)
+            ) ,
+            State(
+                id = State.PRIMARY_STATE_FINALIZED,
+                label = self.get_label(State, State.PRIMARY_STATE_FINALIZED)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_CONFIGURING,
+                label = self.get_label(State, State.TRANSITION_STATE_CONFIGURING)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_CLEANINGUP,
+                label = self.get_label(State, State.TRANSITION_STATE_CLEANINGUP)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_ACTIVATING,
+                label = self.get_label(State, State.TRANSITION_STATE_ACTIVATING)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_DEACTIVATING,
+                label = self.get_label(State, State.TRANSITION_STATE_DEACTIVATING)
+            ) ,
+            State(
+                id = State.TRANSITION_STATE_ERRORPROCESSING,
+                label = self.get_label(State, State.TRANSITION_STATE_ERRORPROCESSING)
+            ) 
+        ]
+
         self.srv_get_state = self.create_service(
                 GetState, 
                 node_name + '/get_state',
@@ -31,24 +80,36 @@ class LifecycleNode(Node):
                 self.change_state
             )
 
-        # self.srv_get_available_states = self.create_service(
-        #         , 
-        #         node_name + '__get_available_states',
-        #         self.get_available_states
-        #     )
+        self.srv_get_available_states = self.create_service(
+                GetAvailableStates, 
+                node_name + '/get_available_states',
+                self.get_available_states
+            )
 
-        # self.srv_get_available_transitions = self.create_service(
-        #         ,
-        #         node_name + '__get_available_transitions',
-        #         self.get_available_transitions
-        #     )
-
+        self.srv_get_available_transitions = self.create_service(
+                GetAvailableTransitions,
+                node_name + '/get_available_transitions',
+                self.get_available_transitions
+            )
 
         self.pub_transition_event = self.create_publisher(
                 TransitionEvent, 
                 node_name + '/transition_event',
                 1
             )
+
+
+    def get_label(self, msg_type, id):
+        for key, value in vars(msg_type).items():
+            if(value == id):
+                return key
+        return None
+
+
+    def get_state(self, request, response):
+        response.current_state = State(id=self.state, label=self.get_label(State, self.state))
+        return response 
+
 
     def change_state(self, request, response):
         
@@ -79,17 +140,16 @@ class LifecycleNode(Node):
             response.success = False
 
         return response
-    
-    def get_label(self, msg_type, id):
-        for key, value in vars(msg_type).items():
-            if(value == id):
-                return key
-        return None
 
 
-    def get_state(self, request, response):
-        response.current_state = State(id=self.state, label=self.get_label(State, self.state))
-        return response 
+    def get_available_states(self, request, response):
+        response.available_states = self.available_states
+        return response
+
+
+    def get_available_transitions(self, request, response):
+        response.available_transitions = self.available_transitions
+        return response
 
 
     def create(self):
@@ -325,6 +385,7 @@ class LifecycleNode(Node):
             )       
 
             return task_deactivate.result()
+
 
     def shutdown(self):
 
