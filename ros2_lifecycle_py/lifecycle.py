@@ -50,8 +50,6 @@ class LifecycleNode(Node):
                 1
             )
 
-
-    
     def change_state(self, request, response):
         
         if(request.transition.id == Transition.TRANSITION_CREATE):
@@ -91,21 +89,26 @@ class LifecycleNode(Node):
 
     def get_state(self, request, response):
         response.current_state = State(id=self.state, label=self.get_label(State, self.state))
-
         return response 
 
 
     def create(self):
-        print("create")
         if(self.state == State.PRIMARY_STATE_UNKNOWN):
             self.pub_transition_event.publish(
                 TransitionEvent(
-                    timestamp=self.get_clock().now().nanoseconds,
-                    transition=Transition.TRANSITION_CREATE,
-                    start_state=State.PRIMARY_STATE_UNKNOWN,
-                    goal_state=State.PRIMARY_STATE_UNCONFIGURED
+                    timestamp = self.get_clock().now().nanoseconds,
+                    transition = Transition(
+                        id = Transition.TRANSITION_CREATE,
+                        label = self.get_label(Transition, Transition.TRANSITION_CREATE)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_UNKNOWN,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNKNOWN)),
+                    goal_state = State(
+                        id = State.PRIMARY_STATE_UNCONFIGURED,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED))
                 )
             )
+
             self.state = State.PRIMARY_STATE_UNCONFIGURED
             return Transition.TRANSITION_CALLBACK_SUCCESS 
         else:
@@ -113,7 +116,6 @@ class LifecycleNode(Node):
 
 
     def configure(self):
-        print("configure")
         if(self.state == State.PRIMARY_STATE_UNCONFIGURED):
 
             self.state = State.TRANSITION_STATE_CONFIGURING
@@ -121,9 +123,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=Transition.TRANSITION_CONFIGURE),
-                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = Transition.TRANSITION_CONFIGURE,
+                        label = self.get_label(Transition, Transition.TRANSITION_CONFIGURE)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_UNCONFIGURED,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )
 
@@ -147,9 +155,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=result_transition),
-                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = result_transition,
+                        label = self.get_label(Transition, result_transition)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_UNCONFIGURED,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -164,9 +178,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=Transition.TRANSITION_CLEANUP),
-                    start_state = State(id=State.PRIMARY_STATE_INACTIVE),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = Transition.TRANSITION_CLEANUP,
+                        label = self.get_label(Transition, Transition.TRANSITION_CLEANUP)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_INACTIVE,
+                        label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -186,9 +206,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=result_transition),
-                    start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = result_transition,
+                        label = self.get_label(Transition, result_transition)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_UNCONFIGURED,
+                        label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -203,9 +229,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=Transition.TRANSITION_ACTIVATE),
-                    start_state = State(id=State.PRIMARY_STATE_INACTIVE),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = Transition.TRANSITION_ACTIVATE,
+                        label = self.get_label(Transition, Transition.TRANSITION_ACTIVATE)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_INACTIVE,
+                        label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -229,9 +261,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=result_transition),
-                    start_state = State(id=State.TRANSITION_STATE_ACTIVATING),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = result_transition,
+                        label = self.get_label(Transition, result_transition)),
+                    start_state = State(
+                        id = State.TRANSITION_STATE_ACTIVATING,
+                        label = self.get_label(State, State.TRANSITION_STATE_ACTIVATING)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -246,9 +284,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=Transition.TRANSITION_DEACTIVATE),
-                    start_state = State(id=State.PRIMARY_STATE_ACTIVE),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = Transition.TRANSITION_DEACTIVATE,
+                        label = self.get_label(Transition, Transition.TRANSITION_DEACTIVATE)),
+                    start_state = State(
+                        id = State.PRIMARY_STATE_ACTIVE,
+                        label = self.get_label(State, State.PRIMARY_STATE_ACTIVE)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -268,9 +312,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=result_transition),
-                    start_state = State(id=State.TRANSITION_STATE_DEACTIVATING),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = result_transition,
+                        label = self.get_label(Transition, result_transition)),
+                    start_state = State(
+                        id = State.TRANSITION_STATE_DEACTIVATING,
+                        label = self.get_label(State, State.TRANSITION_STATE_DEACTIVATING)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
@@ -286,9 +336,15 @@ class LifecycleNode(Node):
                 self.pub_transition_event.publish(
                     TransitionEvent(
                         timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(id=Transition.TRANSITION_UNCONFIGURED_SHUTDOWN),
-                        start_state = State(id=State.PRIMARY_STATE_UNCONFIGURED),
-                        goal_state = State(id=self.state)
+                        transition = Transition(
+                            id = Transition.TRANSITION_UNCONFIGURED_SHUTDOWN,
+                            label = self.get_label(Transition, Transition.TRANSITION_UNCONFIGURED_SHUTDOWN)),
+                        start_state = State(
+                            id = State.PRIMARY_STATE_UNCONFIGURED,
+                            label = self.get_label(State, State.PRIMARY_STATE_UNCONFIGURED)),
+                        goal_state = State(
+                            id = self.state,
+                            label = self.get_label(State, self.state))
                     )
                 )       
 
@@ -296,9 +352,15 @@ class LifecycleNode(Node):
                 self.pub_transition_event.publish(
                     TransitionEvent(
                         timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(id=Transition.TRANSITION_INACTIVE_SHUTDOWN),
-                        start_state = State(id=State.PRIMARY_STATE_INACTIVE),
-                        goal_state = State(id=self.state)
+                        transition = Transition(
+                            id = Transition.TRANSITION_INACTIVE_SHUTDOWN,
+                            label = self.get_label(Transition, Transition.TRANSITION_INACTIVE_SHUTDOWN)),
+                        start_state = State(
+                            id = State.PRIMARY_STATE_INACTIVE,
+                            label = self.get_label(State, State.PRIMARY_STATE_INACTIVE)),
+                        goal_state = State(
+                            id = self.state,
+                            label = self.get_label(State, self.state))
                     )
                 )       
 
@@ -306,9 +368,15 @@ class LifecycleNode(Node):
                 self.pub_transition_event.publish(
                     TransitionEvent(
                         timestamp = self.get_clock().now().nanoseconds,
-                        transition = Transition(id=Transition.TRANSITION_ACTIVE_SHUTDOWN),
-                        start_state = State(id=State.PRIMARY_STATE_ACTIVE),
-                        goal_state = State(id=self.state)
+                        transition = Transition(
+                            id = Transition.TRANSITION_ACTIVE_SHUTDOWN,
+                            label = self.get_label(Transition, Transition.TRANSITION_ACTIVE_SHUTDOWN)),
+                        start_state = State(
+                            id = State.PRIMARY_STATE_ACTIVE,
+                            label = self.get_label(State, State.PRIMARY_STATE_ACTIVE)),
+                        goal_state = State(
+                            id = self.state,
+                            label = self.get_label(State, self.state))
                     )
                 )       
         
@@ -330,9 +398,15 @@ class LifecycleNode(Node):
             self.pub_transition_event.publish(
                 TransitionEvent(
                     timestamp = self.get_clock().now().nanoseconds,
-                    transition = Transition(id=result_transition),
-                    start_state = State(id=State.TRANSITION_STATE_SHUTTINGDOWN),
-                    goal_state = State(id=self.state)
+                    transition = Transition(
+                        id = result_transition,
+                        label = self.get_label(Transition, result_transition)),
+                    start_state = State(
+                        id = State.TRANSITION_STATE_SHUTTINGDOWN,
+                        label = self.get_label(State, State.TRANSITION_STATE_SHUTTINGDOWN)),
+                    goal_state = State(
+                        id = self.state,
+                        label = self.get_label(State, self.state))
                 )
             )       
 
